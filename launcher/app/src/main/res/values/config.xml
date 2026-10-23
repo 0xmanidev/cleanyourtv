@@ -234,6 +234,9 @@
     <!-- The Inputs pill in the top bar, shown when the TV has inputs to list. false hides it for good; what the
          remote's Input button does is unchanged. Can also be set with "show_inputs_pill" in a theme. -->
     <bool name="show_inputs_pill">true</bool>
+    <!-- The Bluetooth pill in the top bar. Shows Bluetooth connection status and opens Bluetooth settings.
+         Requires BLUETOOTH_CONNECT permission. Can also be set with "show_bluetooth_pill" in a theme. -->
+    <bool name="show_bluetooth_pill">false</bool>
     <!-- Names under every tile, not only the focused one: unfocused names stay dimmed, the focused one is full white.
          With dock_row the band grows down to hold the dock's names too. -->
     <bool name="always_show_names">false</bool>

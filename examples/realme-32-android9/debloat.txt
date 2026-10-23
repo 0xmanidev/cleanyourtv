@@ -1,0 +1,65 @@
+# Realme 32 inch Smart TV (Android 9 / API 28)
+# Based on Realme 32 inch Android TV with Android 9
+# 1 GB RAM (MemTotal about 935 MB). Stock launcher: com.google.android.tvlauncher
+# Live TV / tuner: com.mediatek.wwtv.tvcenter (leave it; the Inputs menu uses it)
+#
+# Apply:   TV_HOST=<tv ip> tools/disable.sh examples/realme-32-android9/debloat.txt
+# Undo:    TV_HOST=<tv ip> tools/restore.sh examples/realme-32-android9/debloat.txt com.google.android.tvlauncher
+# Everything is DISABLED, not uninstalled. Comment out any line you want to keep.
+#
+# Known quirks on this firmware:
+# - USB debugging alone opens network ADB on port 5555
+# - After a reboot the TV may take a new DHCP address
+# - Private DNS dns.adguard-dns.com validates and survives a reboot
+
+# Realme/Changhong store, ads, installers and media extras
+com.realme.tvstore                        # Realme TV store
+com.realme.tvmanager                      # Realme TV Manager
+com.realme.tvassistant                    # Realme TV Assistant
+com.realme.tvrecommendations              # Realme recommendations
+com.realme.tvsetupwizard                  # Setup wizard
+com.realme.tvanoki                        # Anoki ACR
+com.realme.cltvfast                       # FAST channels
+com.realme.tvupgrade                      # Firmware updater (comment out to keep updates)
+com.realme.dmtupgrade                     # Second factory updater
+com.realme.tvchinstallapk                 # Silent installer
+com.realme.tvhelp                         # E-manual
+com.realme.tvscreenshare                  # Screen share
+com.realme.tvmultiscreenshare             # Multi-screen share
+com.realme.tvfileexplorer                 # File explorer
+com.realme.tvimageplayer                  # Image player
+
+# Content recognition, FAST channels and Google TV promo rows
+tv.anoki.acr.anokiacroptin               # Automatic content recognition
+com.cltv.fast                            # FAST channel app
+com.google.android.tvrecommendations
+com.google.android.feedback
+com.android.tv.feedbackconsent
+com.google.android.partnersetup
+
+# Setup wizards, assistant and accessibility. Re-enable the ones you use.
+com.google.android.tungsten.setupwraith  # First-run wizard
+com.google.android.katniss               # Re-enable for the microphone button
+com.google.android.tts
+com.google.android.marvin.talkback       # Re-enable for TalkBack
+com.google.android.backdrop              # Ambient screensaver
+com.google.android.syncadapters.calendar
+com.google.android.tv.remote.service     # Android phone remote; Chromecast is mediashell
+
+# MediaTek factory/test apps
+com.mediatek.testpq                      # Factory picture-quality test tool
+com.mediatek.wwtv.setupwizard            # First-boot setup wizard
+
+# Stock launcher, replaced by launcher/. Left to launcher/build-and-install.sh, which disables it only
+# after the new home is installed and set as default; restore.sh re-enables it.
+# com.google.android.tvlauncher
+
+# Optional: uncomment what you don't use. Left enabled on the test set unless noted.
+# com.google.android.apps.mediashell     # Chromecast; re-enabled, iPhones cast YouTube with it
+# com.google.android.youtube.tv          # Re-enabled
+# com.google.android.youtube.tvmusic     # Disabled on the test set
+# com.apple.atve.androidtv.appletv       # Disabled on the test set
+# com.disney.disneyplus                  # Disabled on the test set
+# com.mercadolibre.android.mplay_tv      # Disabled on the test set
+# com.amazon.amazonvideo.livingroom      # Already disabled at the factory
+# com.google.android.play.games          # Already disabled at the factory

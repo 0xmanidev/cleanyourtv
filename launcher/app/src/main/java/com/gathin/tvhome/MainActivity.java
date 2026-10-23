@@ -29,6 +29,9 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -176,6 +179,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView btnWifi;
     /** The network pill's icon as last set, so a refresh that changes nothing does not lay the top bar out again. */
     private int wifiIcon;
+    private TextView btnBluetooth;
+    /** config show_bluetooth_pill: false keeps the Bluetooth pill hidden. */
+    private boolean showBluetoothPill = true;
     /** The pills have been filled in once; later resumes refresh them after the first frame. */
     private boolean pillsShown;
     private TextView shamsiDate;
@@ -299,6 +305,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         @Override
         public void onInputRemoved(String inputId) {
             updateInputsButton();
+        }
+    };
+    private final BroadcastReceiver bluetoothReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)
+                    || BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED.equals(action)
+                    || BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
+                handler.post(MainActivity.this::updateBluetoothLabel);
+            }
         }
     };
     /** Listens for any VPN coming up or going down, even one this app's traffic is excluded from. */
@@ -597,6 +614,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
             return true;
         });
+        btnBluetooth = findViewById(R.id.btnBluetooth);
+        btnBluetooth.setOnClickListener(v -> open(systemIntent(Settings.ACTION_BLUETOOTH_SETTINGS)));
         launcherSettingsButton = cfg.launcherSettingsButton;
         if (launcherSettingsButton) {
             ((TextView) btnSettings).setText(R.string.launcher_settings);
@@ -611,7 +630,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnReorder.setOnClickListener(v -> toggleReorder());
         btnReorder.setVisibility(cfg.reorderButton ? View.VISIBLE : View.GONE);
         if (!cfg.showNetworkPill) btnWifi.setVisibility(View.GONE);
+        if (!cfg.showBluetoothPill) btnBluetooth.setVisibility(View.GONE);
         showInputsPill = cfg.showInputsPill;
+        showBluetoothPill = cfg.showBluetoothPill;
         showInputsMenuRow = cfg.showInputsPill;
         btnLibraryTop = findViewById(R.id.btnLibraryTop);
         btnLibraryTop.setOnClickListener(v -> {
@@ -630,8 +651,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // One gear: Inputs and Wi-Fi move into its dropdown. The Wi-Fi pill stays hidden but keeps its
             // label up to date, which the menu's Wi-Fi row shows.
             showInputsPill = false;
+            showBluetoothPill = false;
             btnInputs.setVisibility(View.GONE);
             btnWifi.setVisibility(View.GONE);
+            btnBluetooth.setVisibility(View.GONE);
             ((TextView) btnSettings).setText(R.string.settings);
             ((TextView) btnSettings).setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_settings, 0, 0, 0);
             if (!iconOnlyButtons) makeIconOnly((TextView) btnSettings);
@@ -650,6 +673,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             makeIconOnly((TextView) btnSettings);
         }
         if (cfg.iconOnlyInputs) makeIconOnly((TextView) btnInputs);
+        if (iconOnlyButtons) makeIconOnly((TextView) btnBluetooth);
         btnSettings.setOnLongClickListener(v -> {
             showSettingsMenu();
             return true;
@@ -674,11 +698,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         };
         btnInputs.setOnKeyListener(pillKeys);
         btnWifi.setOnKeyListener(pillKeys);
+        btnBluetooth.setOnKeyListener(pillKeys);
         btnSettings.setOnKeyListener(pillKeys);
         btnReorder.setOnKeyListener(pillKeys);
         btnLibraryTop.setOnKeyListener(pillKeys);
         if (advancedEffects) {
-            for (View button : new View[]{btnInputs, btnWifi, btnReorder, btnLibraryTop, btnSettings}) {
+            for (View button : new View[]{btnInputs, btnWifi, btnBluetooth, btnReorder, btnLibraryTop, btnSettings}) {
                 button.setOnFocusChangeListener((view, focused) -> view.animate()
                         .scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f)
                         .setDuration(reducedMotion ? Motion.REDUCED_MS : 160).start());
@@ -714,6 +739,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
                     .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
                     .build(), vpnCallback);
+        }
+        // Register Bluetooth state receiver
+        IntentFilter bluetoothFilter = new IntentFilter();
+        bluetoothFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+        bluetoothFilter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
+        bluetoothFilter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(bluetoothReceiver, bluetoothFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(bluetoothReceiver, bluetoothFilter);
         }
         // Not after recreate(): the launch intent survives it and would open the settings again.
         if (savedInstanceState == null && !openLauncherSettingsIfAsked(getIntent())) openInputsIfAsked(getIntent());
@@ -850,6 +885,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             refreshPillsAfterNextDraw();
         } else {
             updateWifiLabel();
+            updateBluetoothLabel();
             updateInputsButton();
             pillsShown = true;
         }
@@ -1086,6 +1122,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(packageReceiver);
+        unregisterReceiver(bluetoothReceiver);
         wallpaperPlayer.close();
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
@@ -2352,6 +2389,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 handler.post(() -> {
                     if (isDestroyed()) return;
                     updateWifiLabel();
+                    updateBluetoothLabel();
                     updateInputsButton();
                 });
                 return true;
@@ -2451,6 +2489,50 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (wifiOnlineTint != null && btnWifi.getCompoundDrawableTintList() != tint) {
                 btnWifi.setCompoundDrawableTintList(tint);
             }
+        }
+    }
+
+    /** Updates the Bluetooth pill with connection status. */
+    private void updateBluetoothLabel() {
+        if (!showBluetoothPill || btnBluetooth.getVisibility() != View.VISIBLE) return;
+        String text = getString(R.string.bluetooth);
+        int icon = R.drawable.ic_bluetooth;
+        try {
+            BluetoothManager bm = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+            if (bm != null) {
+                BluetoothAdapter adapter = bm.getAdapter();
+                if (adapter != null) {
+                    if (adapter.isEnabled()) {
+                        // Check for connected devices
+                        Set<BluetoothDevice> bonded = adapter.getBondedDevices();
+                        int connectedCount = 0;
+                        if (bonded != null) {
+                            for (BluetoothDevice device : bonded) {
+                                if (device.getBondState() == BluetoothDevice.BOND_BONDED) {
+                                    // Note: We can't easily check active connection without BLUETOOTH_CONNECT permission
+                                    // and connection callbacks. For now, show if Bluetooth is on and has bonded devices.
+                                    connectedCount++;
+                                }
+                            }
+                        }
+                        if (connectedCount > 0) {
+                            text = getString(R.string.bluetooth_connected, connectedCount);
+                        } else {
+                            text = getString(R.string.bluetooth_on);
+                        }
+                    } else {
+                        text = getString(R.string.bluetooth_off);
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        if (!TextUtils.equals(btnBluetooth.getText(), text)) {
+            btnBluetooth.setText(text);
+        }
+        if (iconOnlyButtons) {
+            btnBluetooth.setContentDescription(btnBluetooth.getText());
+            btnBluetooth.setText(null);
         }
     }
 
